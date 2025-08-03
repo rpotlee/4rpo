@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coin Grouping App</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+```
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 10px;
+        overflow-x: hidden;
+    }
+
+    .container {
+        max-width: 100vw;
+        height: calc(100vh - 20px);
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .header {
+        text-align: center;
+        color: white;
+        margin-bottom: 10px;
+    }
+
+    .header h1 {
+        font-size: clamp(1.5rem, 4vw, 2.5rem);
+        font-weight: 700;
+        margin-bottom: 5px;
+    }
+
+    .header p {
+        font-size: clamp(0.9rem, 2vw, 1.1rem);
+        opacity: 0.9;
+    }
+
+    .main-content {
+        display: flex;
+        gap: 15px;
+        flex: 1;
+        min-height: 0;
+    }
+
+    .coins-panel {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        border-radius: 15px;
+        padding: 15px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        width: 200px;
+        flex-shrink: 0;
+        overflow-y: auto;
+    }
+
+    .coins-panel h3 {
+        color: #4a5568;
+        margin-bottom: 15px;
+        font-size: 1.1rem;
+        text-align: center;
+    }
+
+    .coins-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(35px, 1fr));
+        gap: 8px;
+    }
+
+    .coin {
+        width: 35px;
+        height: 35px;
+        background: linear-gradient(145deg, #ffd700, #ffed4e);
+        border: 2px solid #d4af37;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 0.8rem;
+        color: #8b4513;
+        cursor: grab;
+        user-select: none;
+        transition: all 0.2s ease;
+        box-shadow: 0 2px 8px rgba(212, 175, 55, 0.3);
+    }
+
+    .coin:hover {
+        transform: translateY(-2px) scale(1.05);
+        box-shadow: 0 4px 15px rgba(212, 175, 55, 0.4);
+    }
+
+    .coin:active {
+        cursor: grabbing;
+        transform: scale(0.95);
+    }
+
+    .coin.dragging {
+        opacity: 0.5;
+        transform: scale(1.1);
+        z-index: 1000;
+        pointer-events: none;
+    }
+
+    .groups-area {
+        flex: 1;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 12px;
+        overflow-y: auto;
+    }
+
+    .group {
+        background: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(10px);
+        border-radius: 12px;
+        padding: 15px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        border: 3px dashed #cbd5e0;
+        transition: all 0.3s ease;
+        aspect-ratio: 1;
+        max-height: 180px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .group.drag-over {
+        border-color: #4299e1;
+        background: rgba(66, 153, 225, 0.1);
+        transform: scale(1.02);
+    }
+
+    .group-header {
+        text-align: center;
+        margin-bottom: 10px;
+    }
+
+    .group-title {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #2d3748;
+        margin-bottom: 4px;
+    }
+
+    .group-sum {
+        font-size: 1.1rem;
+        font-weight: bold;
+        color: #4299e1;
+        background: rgba(66, 153, 225, 0.1);
+        padding: 4px 12px;
+        border-radius: 20px;
+        display: inline-block;
+    }
+
+    .group-coins {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(30px, 1fr));
+        gap: 6px;
+        flex: 1;
+        overflow-y: auto;
+    }
+
+    .controls {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .coins-panel {
+        position: relative;
+    }
+
+    .coins-panel::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        border-radius: 15px;
+        border: 3px dashed transparent;
+        transition: all 0.3s ease;
+        pointer-events: none;
+    }
+
+    .coins-panel.drag-over::before {
+        border-color: #4299e1;
+        background: rgba(66, 153, 225, 0.1);
+    }
+
+    .btn {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 20px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-size: 0.9rem;
+    }
+
+    .btn-primary {
+        background: linear-gradient(145deg, #4299e1, #3182ce);
+        color: white;
+        box-shadow: 0 4px 15px rgba(66, 153, 225, 0.3);
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(66, 153, 225, 0.4);
+    }
+
+    .btn-secondary {
+        background: rgba(255, 255, 255, 0.9);
+        color: #4a5568;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .btn-secondary:hover {
+        background: white;
+        transform: translateY(-2px);
+    }
+
+    /* Mobile Responsiveness */
+    @media (max-width: 768px) {
+        .main-content {
+            flex-direction: column;
+        }
+
+        .coins-panel {
+            width: 100%;
+            max-height: 150px;
+            order: 2;
+        }
+
+        .groups-area {
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            order: 1;
+        }
+
+        .group {
+            max-height: 140px;
+            padding: 12px;
+        }
+
+        .container {
+            gap: 10px;
+        }
+
+        .coin {
+            width: 30px;
+            height: 30px;
+            font-size: 0.7rem;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .coins-container {
+            grid-template-columns: repeat(auto-fit, minmax(30px, 1fr));
+            gap: 6px;
+        }
+
+        .group-coins {
+            grid-template-columns: repeat(auto-fill, minmax(25px, 1fr));
+            gap: 4px;
+        }
+
+        .groups-area {
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        }
+
+        .group {
+            max-height: 120px;
+            padding: 10px;
+        }
+
+        .group-title {
+            font-size: 0.8rem;
+        }
+
+        .group-sum {
+            font-size: 0.9rem;
+            padding: 3px 8px;
+        }
+    }
+</style>
+```
+
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🪙 Coin Grouping App</h1>
+            <p>Drag coins into groups to calculate sums</p>
+        </div>
+
+```
+    <div class="controls">
+        <button class="btn btn-primary" onclick="addGroup()">+ Add Group</button>
+        <button class="btn btn-secondary" onclick="undo()" id="undoBtn" disabled>↶ Undo</button>
+        <button class="btn btn-secondary" onclick="resetAll()">Reset All</button>
+    </div>
+
+    <div class="main-content">
+        <div class="coins-panel">
+            <h3>Available Coins</h3>
+            <div class="coins-container" id="coinsContainer">
+                <!-- Coins will be generated here -->
+            </div>
+        </div>
+
+        <div class="groups-area" id="groupsArea">
+            <!-- Groups will be created here -->
+        </div>
+    </div>
+</div>
+
+<script>
+    let groupCounter = 1;
+    let draggedCoin = null;
+    let actionHistory = [];
+    const MAX_HISTORY = 20;
+
+    // Initialize the app
+    function init() {
+        createCoins();
+        addGroup();
+        addGroup();
+        saveState('Initial state');
+    }
+
+    // Save current state for undo functionality
+    function saveState(action) {
+        const state = {
+            action: action,
+            timestamp: Date.now(),
+            coins: {}
+        };
+
+        // Save position of each coin
+        document.querySelectorAll('.coin').forEach(coin => {
+            const value = coin.dataset.value;
+            const parent = coin.parentElement;
+            
+            if (parent.id === 'coinsContainer') {
+                state.coins[value] = 'original';
+            } else if (parent.classList.contains('group-coins')) {
+                const group = parent.closest('.group');
+                const groupIndex = Array.from(document.querySelectorAll('.group')).indexOf(group);
+                state.coins[value] = `group-${groupIndex}`;
+            }
+        });
+
+        actionHistory.push(state);
+        
+        // Keep only last MAX_HISTORY states
+        if (actionHistory.length > MAX_HISTORY) {
+            actionHistory.shift();
+        }
+
+        updateUndoButton();
+    }
+
+    // Undo last action
+    function undo() {
+        if (actionHistory.length <= 1) return; // Keep initial state
+        
+        actionHistory.pop(); // Remove current state
+        const previousState = actionHistory[actionHistory.length - 1];
+        
+        if (previousState) {
+            restoreState(previousState);
+            updateUndoButton();
+        }
+    }
+
+    // Restore state from history
+    function restoreState(state) {
+        const coinsContainer = document.getElementById('coinsContainer');
+        const groups = document.querySelectorAll('.group');
+        
+        // Clear all containers
+        coinsContainer.innerHTML = '';
+        groups.forEach(group => {
+            group.querySelector('.group-coins').innerHTML = '';
+        });
+
+        // Restore each coin to its saved position
+        Object.entries(state.coins).forEach(([value, position]) => {
+            const coin = createCoin(parseInt(value));
+            
+            if (position === 'original') {
+                coinsContainer.appendChild(coin);
+            } else if (position.startsWith('group-')) {
+                const groupIndex = parseInt(position.split('-')[1]);
+                if (groups[groupIndex]) {
+                    groups[groupIndex].querySelector('.group-coins').appendChild(coin);
+                } else {
+                    coinsContainer.appendChild(coin); // Fallback if group doesn't exist
+                }
+            }
+        });
+
+        updateAllGroupSums();
+    }
+
+    // Update undo button state
+    function updateUndoButton() {
+        const undoBtn = document.getElementById('undoBtn');
+        undoBtn.disabled = actionHistory.length <= 1;
+        undoBtn.style.opacity = actionHistory.length <= 1 ? '0.5' : '1';
+    }
+
+    // Create coins 1-49
+    function createCoins() {
+        const container = document.getElementById('coinsContainer');
+        for (let i = 1; i <= 49; i++) {
+            const coin = createCoin(i);
+            container.appendChild(coin);
+        }
+    }
+
+    // Create a single coin element
+    function createCoin(value) {
+        const coin = document.createElement('div');
+        coin.className = 'coin';
+        coin.textContent = value;
+        coin.draggable = true;
+        coin.dataset.value = value;
+
+        coin.addEventListener('dragstart', handleDragStart);
+        coin.addEventListener('dragend', handleDragEnd);
+
+        // Touch events for mobile
+        coin.addEventListener('touchstart', handleTouchStart, {passive: false});
+        coin.addEventListener('touchmove', handleTouchMove, {passive: false});
+        coin.addEventListener('touchend', handleTouchEnd, {passive: false});
+
+        return coin;
+    }
+
+    // Add a new group
+    function addGroup() {
+        const groupsArea = document.getElementById('groupsArea');
+        const group = document.createElement('div');
+        group.className = 'group';
+        group.innerHTML = `
+            <div class="group-header">
+                <div class="group-title">Group ${groupCounter}</div>
+                <div class="group-sum">Sum: 0</div>
+            </div>
+            <div class="group-coins"></div>
+        `;
+
+        group.addEventListener('dragover', handleDragOver);
+        group.addEventListener('drop', handleDrop);
+        group.addEventListener('dragenter', handleDragEnter);
+        group.addEventListener('dragleave', handleDragLeave);
+
+        groupsArea.appendChild(group);
+        groupCounter++;
+        
+        if (actionHistory.length > 0) {
+            saveState(`Added Group ${groupCounter - 1}`);
+        }
+    }
+
+    // Reset all coins to the original container
+    function resetAll() {
+        const coinsContainer = document.getElementById('coinsContainer');
+        const allCoins = document.querySelectorAll('.coin');
+        
+        // Clear all group coins
+        document.querySelectorAll('.group-coins').forEach(container => {
+            container.innerHTML = '';
+        });
+
+        // Reset coins container
+        coinsContainer.innerHTML = '';
+        
+        // Recreate coins
+        createCoins();
+        
+        // Update all group sums
+        updateAllGroupSums();
+        
+        saveState('Reset all coins');
+    }
+
+    // Make coins panel a drop target
+    function setupCoinsPanel() {
+        const coinsPanel = document.querySelector('.coins-panel');
+        coinsPanel.addEventListener('dragover', handleDragOver);
+        coinsPanel.addEventListener('drop', handleCoinsPanelDrop);
+        coinsPanel.addEventListener('dragenter', handleCoinsPanelDragEnter);
+        coinsPanel.addEventListener('dragleave', handleCoinsPanelDragLeave);
+    }
+
+    function handleCoinsPanelDragEnter(e) {
+        e.currentTarget.classList.add('drag-over');
+    }
+
+    function handleCoinsPanelDragLeave(e) {
+        if (!e.currentTarget.contains(e.relatedTarget)) {
+            e.currentTarget.classList.remove('drag-over');
+        }
+    }
+
+    function handleCoinsPanelDrop(e) {
+        e.preventDefault();
+        const coinsPanel = e.currentTarget;
+        coinsPanel.classList.remove('drag-over');
+        
+        if (draggedCoin) {
+            const coinsContainer = document.getElementById('coinsContainer');
+            const originalParent = draggedCoin.parentElement;
+            
+            coinsContainer.appendChild(draggedCoin);
+            
+            // Update sum of the group the coin was removed from
+            if (originalParent.classList.contains('group-coins')) {
+                const group = originalParent.closest('.group');
+                updateGroupSum(group);
+            }
+            
+            saveState(`Moved coin ${draggedCoin.dataset.value} back to original panel`);
+        }
+    }
+
+    // Drag and drop handlers
+    function handleDragStart(e) {
+        draggedCoin = e.target;
+        e.target.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+    }
+
+    function handleDragEnd(e) {
+        e.target.classList.remove('dragging');
+        draggedCoin = null;
+        
+        // Remove all drag-over classes
+        document.querySelectorAll('.drag-over').forEach(el => {
+            el.classList.remove('drag-over');
+        });
+    }
+
+    function handleDragOver(e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+    }
+
+    function handleDragEnter(e) {
+        if (e.target.classList.contains('group') || e.target.closest('.group')) {
+            const group = e.target.classList.contains('group') ? e.target : e.target.closest('.group');
+            group.classList.add('drag-over');
+        }
+    }
+
+    function handleDragLeave(e) {
+        if (!e.currentTarget.contains(e.relatedTarget)) {
+            e.currentTarget.classList.remove('drag-over');
+        }
+    }
+
+    function handleDrop(e) {
+        e.preventDefault();
+        const group = e.currentTarget;
+        group.classList.remove('drag-over');
+        
+        if (draggedCoin) {
+            const originalParent = draggedCoin.parentElement;
+            const groupCoins = group.querySelector('.group-coins');
+            const groupTitle = group.querySelector('.group-title').textContent;
+            
+            groupCoins.appendChild(draggedCoin);
+            
+            // Update sum of both groups (original and new)
+            updateGroupSum(group);
+            if (originalParent.classList.contains('group-coins')) {
+                const originalGroup = originalParent.closest('.group');
+                updateGroupSum(originalGroup);
+            }
+            
+            saveState(`Moved coin ${draggedCoin.dataset.value} to ${groupTitle}`);
+        }
+    }
+
+    // Touch event handlers for mobile
+    let touchCoin = null;
+    let touchOffset = { x: 0, y: 0 };
+
+    function handleTouchStart(e) {
+        e.preventDefault();
+        touchCoin = e.target;
+        const touch = e.touches[0];
+        const rect = touchCoin.getBoundingClientRect();
+        touchOffset.x = touch.clientX - rect.left;
+        touchOffset.y = touch.clientY - rect.top;
+        touchCoin.classList.add('dragging');
+        touchCoin.style.position = 'fixed';
+        touchCoin.style.zIndex = '1000';
+        touchCoin.style.pointerEvents = 'none';
+    }
+
+    function handleTouchMove(e) {
+        if (!touchCoin) return;
+        e.preventDefault();
+        const touch = e.touches[0];
+        touchCoin.style.left = (touch.clientX - touchOffset.x) + 'px';
+        touchCoin.style.top = (touch.clientY - touchOffset.y) + 'px';
+    }
+
+    function handleTouchEnd(e) {
+        if (!touchCoin) return;
+        e.preventDefault();
+        
+        const touch = e.changedTouches[0];
+        const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+        const group = elementBelow?.closest('.group');
+        const coinsPanel = elementBelow?.closest('.coins-panel');
+        
+        const originalParent = touchCoin.parentElement;
+        
+        if (group) {
+            const groupCoins = group.querySelector('.group-coins');
+            const groupTitle = group.querySelector('.group-title').textContent;
+            groupCoins.appendChild(touchCoin);
+            updateGroupSum(group);
+            
+            // Update original group sum if moved from a group
+            if (originalParent.classList.contains('group-coins')) {
+                const originalGroup = originalParent.closest('.group');
+                updateGroupSum(originalGroup);
+            }
+            
+            saveState(`Moved coin ${touchCoin.dataset.value} to ${groupTitle}`);
+        } else if (coinsPanel) {
+            const coinsContainer = document.getElementById('coinsContainer');
+            coinsContainer.appendChild(touchCoin);
+            
+            // Update original group sum if moved from a group
+            if (originalParent.classList.contains('group-coins')) {
+                const originalGroup = originalParent.closest('.group');
+                updateGroupSum(originalGroup);
+            }
+            
+            saveState(`Moved coin ${touchCoin.dataset.value} back to original panel`);
+        }
+        
+        // Reset coin styles
+        touchCoin.classList.remove('dragging');
+        touchCoin.style.position = '';
+        touchCoin.style.zIndex = '';
+        touchCoin.style.pointerEvents = '';
+        touchCoin.style.left = '';
+        touchCoin.style.top = '';
+        touchCoin = null;
+    }
+
+    // Update group sum
+    function updateGroupSum(group) {
+        const coins = group.querySelectorAll('.group-coins .coin');
+        const sum = Array.from(coins).reduce((total, coin) => {
+            return total + parseInt(coin.dataset.value);
+        }, 0);
+        
+        const sumElement = group.querySelector('.group-sum');
+        sumElement.textContent = `Sum: ${sum}`;
+    }
+
+    // Update all group sums
+    function updateAllGroupSums() {
+        document.querySelectorAll('.group').forEach(updateGroupSum);
+    }
+
+    // Initialize the app when page loads
+    init();
+    setupCoinsPanel();
+</script>
+```
+
+</body>
+</html>
