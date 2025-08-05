@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Binary Combinations Explorer</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+```
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+  height: 100vh;
+  color: #333;
+  padding: 5px;
+  overflow: hidden;
+}
+
+.container {
+  height: 100vh;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 16px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 10px;
+  flex-shrink: 0;
+}
+
+.title {
+  font-size: 1.1rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #667eea, #764ba2, #f093fb);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 6px;
+}
+
+.page-selector {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.page-btn {
+  padding: 4px 8px;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.7rem;
+  background: rgba(255, 255, 255, 0.8);
+  color: #667eea;
+  min-height: 26px;
+}
+
+.page-btn.active {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+}
+
+.controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
+  gap: 3px;
+  margin-bottom: 6px;
+}
+
+.btn {
+  padding: 4px 6px;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.65rem;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  text-align: center;
+  min-height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn.secondary {
+  background: linear-gradient(135deg, #f093fb, #f5576c);
+}
+
+.btn.danger {
+  background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+}
+
+.combinations-container {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 4px;
+  overflow: hidden;
+  min-height: 0;
+}
+
+@media (max-width: 768px) {
+  .combinations-container {
+    grid-template-columns: 1fr;
+  }
+}
+
+.combination-group {
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 8px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  border: 2px dashed transparent;
+  min-height: 0;
+  max-width: 140px;
+}
+
+.combination-group.drag-over {
+  border-color: #667eea;
+  background: rgba(102, 126, 234, 0.15);
+}
+
+.combination-group h3 {
+  text-align: center;
+  font-size: 0.65rem;
+  margin-bottom: 4px;
+  font-weight: 700;
+  color: #444;
+  flex-shrink: 0;
+  line-height: 1.1;
+}
+
+.group-content {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  padding-right: 4px;
+}
+
+.group-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.group-content::-webkit-scrollbar-track {
+  background: rgba(0,0,0,0.1);
+  border-radius: 3px;
+}
+
+.group-content::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  border-radius: 3px;
+}
+
+.combination {
+  background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+  border-radius: 4px;
+  padding: 2px 3px;
+  margin-bottom: 1px;
+  cursor: grab;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 0.6rem;
+  border: 2px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.combination:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.combination.highlighted {
+  border-color: #667eea;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+}
+
+.combination.dragging {
+  opacity: 0.7;
+}
+
+.bits-container {
+  display: flex;
+  gap: 1px;
+}
+
+.bit {
+  width: 12px;
+  height: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 0.6rem;
+  border-radius: 2px;
+  cursor: pointer;
+  background: #dee2e6;
+  color: #333;
+  transition: all 0.15s ease;
+}
+
+.bit:hover {
+  transform: scale(1.1);
+}
+
+.bit.selected {
+  background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+  color: white;
+}
+
+.bit-value-label {
+  font-size: 0.55rem;
+  color: #888;
+  min-width: 12px;
+  text-align: right;
+  font-weight: 600;
+}
+
+.selected-positions {
+  font-size: 0.45rem;
+  color: #666;
+  min-width: 15px;
+  font-weight: 500;
+}
+
+.combination.highlighted .bit-value-label,
+.combination.highlighted .selected-positions {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.status {
+  text-align: center;
+  margin-top: 6px;
+  font-size: 0.75rem;
+  color: #666;
+  padding: 4px;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.resize-controls {
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 8px;
+  padding: 8px;
+  margin-bottom: 6px;
+  border: 2px solid #667eea;
+}
+
+.resize-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+  font-size: 0.7rem;
+}
+
+.resize-row:last-child {
+  margin-bottom: 0;
+}
+
+.resize-row label {
+  min-width: 80px;
+  font-weight: 600;
+  color: #444;
+}
+
+.resize-row input[type="range"] {
+  flex: 1;
+  height: 4px;
+  background: #ddd;
+  border-radius: 2px;
+  outline: none;
+}
+
+.resize-row input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.btn-small {
+  padding: 2px 6px;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.6rem;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  cursor: pointer;
+}
+
+/* Enhanced mobile responsiveness */
+@media (max-width: 600px) {
+  .combination {
+    padding: 3px 6px;
+    gap: 4px;
+  }
+  
+  .bit {
+    width: 16px;
+    height: 16px;
+    font-size: 0.75rem;
+  }
+  
+  .bit-value-label {
+    min-width: 16px;
+    font-size: 0.7rem;
+  }
+  
+  .selected-positions {
+    min-width: 22px;
+    font-size: 0.6rem;
+  }
+}
+```
+
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="stats-panel" id="statsPanel">
+      Codes: <span id="totalCodes">7</span> | Groups: <span id="totalGroups">2</span>
+    </div>
+
+```
+<div class="header">
+  <h1 class="title" id="pageTitle">3-Bit Binary Codes Explorer (1-7)</h1>
+
+  <div class="page-selector">
+    <button class="page-btn active" onclick="switchPage(3)">3-Bit</button>
+    <button class="page-btn" onclick="switchPage(4)">4-Bit</button>
+    <button class="page-btn" onclick="switchPage(5)">5-Bit</button>
+    <button class="page-btn" onclick="switchPage(6)">6-Bit</button>
+    <button class="page-btn" onclick="switchPage(7)">7-Bit</button>
+    <button class="page-btn" onclick="switchPage(8)">8-Bit</button>
+    <button class="page-btn" onclick="switchPage(9)">9-Bit</button>
+    <button class="page-btn" onclick="switchPage(10)">10-Bit</button>
+  </div>
+
+  <div class="controls">
+    <button class="btn" onclick="addNewGroup()">+ Group</button>
+    <button class="btn secondary" onclick="partitionSelected()">📊 Partition</button>
+    <button class="btn" onclick="checkCollisions()">🔍 Check OR</button>
+    <button class="btn" onclick="undoLastAction()">↶ Undo</button>
+    <button class="btn secondary" onclick="clearHighlights()">✨ Clear</button>
+    <button class="btn danger" onclick="resetAll()">🗑 Reset</button>
+    <button class="btn" onclick="showResizeControls()">📐 Resize</button>
+    <button class="btn" onclick="alert('Help: Single-click bits to select, double-click to edit, click codes to highlight, drag to move between groups')">❓ Help</button>
+  </div>
+  
+  <div id="resizeControls" class="resize-controls" style="display: none;">
+    <div class="resize-row">
+      <label>Width: <span id="widthValue">120</span>px</label>
+      <input type="range" id="widthSlider" min="80" max="300" value="120" oninput="updateGroupWidth(this.value)">
+    </div>
+    <div class="resize-row">
+      <label>Max Width: <span id="maxWidthValue">140</span>px</label>
+      <input type="range" id="maxWidthSlider" min="100" max="400" value="140" oninput="updateMaxGroupWidth(this.value)">
+    </div>
+    <div class="resize-row">
+      <label>Height: <span id="heightValue">auto</span></label>
+      <input type="range" id="heightSlider" min="200" max="800" value="400" oninput="updateGroupHeight(this.value)">
+      <button class="btn-small" onclick="resetGroupHeight()">Auto</button>
+    </div>
+  </div>
+</div>
+
+<div class="combinations-container" id="combinationsContainer">
+  <!-- Content will be generated here -->
+</div>
+
+<div class="status" id="status">
+  🔴 Single-click bits to select • 🔧 Double-click bits to edit • 🔵 Click codes to highlight • 📦 Drag codes to groups
+</div>
+```
+
+  </div>
+
+  <script>
+    let currentBits = 3;
+    let combinations = [];
+    let actionHistory = [];
+    let highlightedElements = new Set();
+    let selectedBits = new Set();
+    let groups = ['ungrouped', 'empty_group'];
+    let groupCounter = 1;
+    
+    // Resize settings
+    let groupMinWidth = 120;
+    let groupMaxWidth = 140;
+    let groupHeight = 'auto';
+
+    function generateCombinations(bitCount) {
+      const result = [];
+      for (let i = 1; i < Math.pow(2, bitCount); i++) {
+        const binary = i.toString(2).padStart(bitCount, "0").split("").map(Number);
+        result.push({ decimal: i, binary: binary });
+      }
+      return result;
+    }
+
+    function updateStats() {
+      document.getElementById('totalCodes').textContent = combinations.length;
+      document.getElementById('totalGroups').textContent = groups.length;
+    }
+
+    function updateStatus(message) {
+      const statusEl = document.getElementById('status');
+      statusEl.textContent = message;
+      setTimeout(() => {
+        statusEl.textContent = "🔴 Single-click bits to select • 🔧 Double-click bits to edit • 🔵 Click codes to highlight • 📦 Drag codes to groups";
+      }, 3000);
+    }
+
+    function showResizeControls() {
+      const controls = document.getElementById('resizeControls');
+      controls.style.display = controls.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function updateGroupWidth(value) {
+      groupMinWidth = parseInt(value);
+      document.getElementById('widthValue').textContent = value;
+      
+      // Update CSS dynamically
+      const style = document.createElement('style');
+      style.textContent = `.combinations-container { grid-template-columns: repeat(auto-fit, minmax(${groupMinWidth}px, 1fr)); }`;
+      document.head.appendChild(style);
+      
+      updateStatus(`📐 Group min width: ${value}px`);
+    }
+
+    function updateMaxGroupWidth(value) {
+      groupMaxWidth = parseInt(value);
+      document.getElementById('maxWidthValue').textContent = value;
+      
+      // Update CSS dynamically
+      const style = document.createElement('style');
+      style.textContent = `.combination-group { max-width: ${groupMaxWidth}px; }`;
+      document.head.appendChild(style);
+      
+      updateStatus(`📐 Group max width: ${value}px`);
+    }
+
+    function updateGroupHeight(value) {
+      groupHeight = parseInt(value);
+      document.getElementById('heightValue').textContent = `${value}px`;
+      
+      // Update CSS dynamically
+      const style = document.createElement('style');
+      style.textContent = `.combination-group { height: ${groupHeight}px; } .group-content { max-height: ${groupHeight - 40}px; }`;
+      document.head.appendChild(style);
+      
+      updateStatus(`📐 Group height: ${value}px`);
+    }
+
+    function resetGroupHeight() {
+      groupHeight = 'auto';
+      document.getElementById('heightValue').textContent = 'auto';
+      document.getElementById('heightSlider').value = 400;
+      
+      // Remove height constraint
+      const style = document.createElement('style');
+      style.textContent = `.combination-group { height: auto; } .group-content { max-height: none; }`;
+      document.head.appendChild(style);
+      
+      updateStatus(`📐 Group height: auto`);
+    }
+
+    function generateCombinations(bitCount) {
+      const result = [];
+      for (let i = 1; i < Math.pow(2, bitCount); i++) {
+        const binary = i.toString(2).padStart(bitCount, "0").split("").map(Number);
+        result.push({ decimal: i, binary: binary });
+      }
+      return result;
+    }
+
+    function updateStats() {
+      document.getElementById('totalCodes').textContent = combinations.length;
+      document.getElementById('totalGroups').textContent = groups.length;
+    }
+
+    function updateStatus(message) {
+      const statusEl = document.getElementById('status');
+      statusEl.textContent = message;
+      setTimeout(() => {
+        statusEl.textContent = "🔴 Single-click bits to select • 🔧 Double-click bits to edit • 🔵 Click codes to highlight • 📦 Drag codes to groups";
+      }, 3000);
+    }
+
+    function renderCombinations() {
+      const container = document.getElementById("combinationsContainer");
+      container.innerHTML = '';
+      
+      // Create groups
+      groups.forEach(groupId => {
+        const groupDiv = document.createElement('div');
+        groupDiv.className = 'combination-group';
+        groupDiv.id = groupId;
+        
+        const header = document.createElement('h3');
+        const groupCombos = combinations.filter(c => c.group === groupId);
+        
+        let displayName = groupId === 'ungrouped' ? '📋 All Codes' : '📦 Drop Zone';
+        if (groupId.startsWith('group_')) {
+          displayName = `📁 ${groupId.replace('group_', '').replace(/_/g, ' ')}`;
+        } else if (groupId.startsWith('pattern_')) {
+          displayName = `🔍 Pattern ${groupId.replace('pattern_', '')}`;
+        } else if (groupId === 'collision_group') {
+          displayName = `💥 Collisions`;
+        }
+        
+        header.textContent = `${displayName} (${groupCombos.length})`;
+        groupDiv.appendChild(header);
+        
+        const content = document.createElement('div');
+        content.className = 'group-content';
+        groupDiv.appendChild(content);
+        
+        setupDropZone(groupDiv);
+        container.appendChild(groupDiv);
+      });
+
+      // Add combinations
+      combinations.forEach(combo => {
+        const div = document.createElement("div");
+        div.className = "combination";
+        div.dataset.id = combo.id;
+        div.draggable = true;
+
+        const bitValueLabel = document.createElement("div");
+        bitValueLabel.className = "bit-value-label";
+        bitValueLabel.textContent = combo.decimal;
+
+        const bitsContainer = document.createElement("div");
+        bitsContainer.className = "bits-container";
+
+        combo.bits.forEach((bit, index) => {
+          const bitDiv = document.createElement("div");
+          bitDiv.className = "bit";
+          bitDiv.textContent = bit;
+          bitDiv.dataset.comboId = combo.id;
+          bitDiv.dataset.bitIndex = index;
+
+          let clickTimeout = null;
+          bitDiv.addEventListener("click", (e) => {
+            e.stopPropagation();
+            
+            if (clickTimeout) {
+              clearTimeout(clickTimeout);
+              clickTimeout = null;
+              toggleBitValue(bitDiv, combo, index);
+            } else {
+              clickTimeout = setTimeout(() => {
+                clickTimeout = null;
+                toggleBitSelection(bitDiv);
+              }, 300);
+            }
+          });
+
+          bitsContainer.appendChild(bitDiv);
+        });
+
+        const selectedPositions = document.createElement("div");
+        selectedPositions.className = "selected-positions";
+        selectedPositions.textContent = getSelectedPositions(combo.id);
+
+        div.appendChild(bitValueLabel);
+        div.appendChild(bitsContainer);
+        div.appendChild(selectedPositions);
+        
+        div.addEventListener("click", () => toggleCombinationHighlight(div));
+        div.addEventListener("dragstart", handleDragStart);
+        div.addEventListener("dragend", handleDragEnd);
+
+        const groupEl = document.getElementById(combo.group);
+        if (groupEl) {
+          const content = groupEl.querySelector('.group-content');
+          if (content) {
+            content.appendChild(div);
+          }
+        }
+      });
+
+      restoreVisualStates();
+      updateStats();
+    }
+
+    function getSelectedPositions(comboId) {
+      const positions = [];
+      for (let i = 0; i < currentBits; i++) {
+        if (selectedBits.has(`bit-${comboId}-${i}`)) {
+          positions.push(i + 1);
+        }
+      }
+      return positions.length > 0 ? `(${positions.join(',')})` : '';
+    }
+
+    function toggleBitValue(bitEl, combo, bitIndex) {
+      saveState('toggle_bit');
+      combo.bits[bitIndex] = combo.bits[bitIndex] === 0 ? 1 : 0;
+      combo.decimal = parseInt(combo.bits.join(''), 2);
+      renderCombinations();
+      updateStatus(`🔧 Changed bit ${bitIndex + 1} → decimal: ${combo.decimal}`);
+    }
+
+    function toggleBitSelection(bitEl) {
+      const key = `bit-${bitEl.dataset.comboId}-${bitEl.dataset.bitIndex}`;
+      if (selectedBits.has(key)) {
+        selectedBits.delete(key);
+        bitEl.classList.remove("selected");
+      } else {
+        selectedBits.add(key);
+        bitEl.classList.add("selected");
+      }
+      
+      const comboEl = bitEl.closest('.combination');
+      if (comboEl) {
+        const positionsEl = comboEl.querySelector('.selected-positions');
+        if (positionsEl) {
+          positionsEl.textContent = getSelectedPositions(bitEl.dataset.comboId);
+        }
+      }
+      
+      updateStatus(`🔴 ${selectedBits.size} bits selected`);
+    }
+
+    function toggleCombinationHighlight(comboEl) {
+      const key = `combo-${comboEl.dataset.id}`;
+      if (highlightedElements.has(key)) {
+        highlightedElements.delete(key);
+        comboEl.classList.remove("highlighted");
+      } else {
+        highlightedElements.add(key);
+        comboEl.classList.add("highlighted");
+      }
+      updateStatus(`🔵 ${highlightedElements.size} codes highlighted`);
+    }
+
+    function restoreVisualStates() {
+      highlightedElements.forEach(key => {
+        const id = key.split('-')[1];
+        const el = document.querySelector(`.combination[data-id="${id}"]`);
+        if (el) el.classList.add("highlighted");
+      });
+
+      selectedBits.forEach(key => {
+        const [, id, idx] = key.split('-');
+        const el = document.querySelector(`.bit[data-combo-id="${id}"][data-bit-index="${idx}"]`);
+        if (el) {
+          el.classList.add("selected");
+          const comboEl = el.closest('.combination');
+          if (comboEl) {
+            const positionsEl = comboEl.querySelector('.selected-positions');
+            if (positionsEl) {
+              positionsEl.textContent = getSelectedPositions(id);
+            }
+          }
+        }
+      });
+    }
+
+    function handleDragStart(e) {
+      e.target.classList.add("dragging");
+      e.dataTransfer.setData('text/plain', e.target.dataset.id);
+    }
+
+    function handleDragEnd(e) {
+      e.target.classList.remove("dragging");
+    }
+
+    function setupDropZone(zone) {
+      zone.addEventListener('dragover', e => {
+        e.preventDefault();
+        zone.classList.add("drag-over");
+      });
+
+      zone.addEventListener('dragleave', e => {
+        if (!zone.contains(e.relatedTarget)) {
+          zone.classList.remove("drag-over");
+        }
+      });
+
+      zone.addEventListener('drop', e => {
+        e.preventDefault();
+        zone.classList.remove("drag-over");
+        const comboId = parseInt(e.dataTransfer.getData('text/plain'));
+        const combo = combinations.find(c => c.id === comboId);
+        if (combo && combo.group !== zone.id) {
+          saveState('move');
+          combo.group = zone.id;
+          renderCombinations();
+          updateStatus(`✅ Moved code ${combo.decimal}`);
+        }
+      });
+    }
+
+    function saveState(action) {
+      actionHistory.push({
+        action,
+        combinations: JSON.parse(JSON.stringify(combinations)),
+        highlighted: new Set(highlightedElements),
+        selectedBits: new Set(selectedBits),
+        groups: [...groups],
+        groupCounter: groupCounter
+      });
+      if (actionHistory.length > 25) actionHistory.shift();
+    }
+
+    function switchPage(bitCount) {
+      currentBits = bitCount;
+      
+      document.querySelectorAll('.page-btn').forEach(btn => btn.classList.remove('active'));
+      const clickedButton = Array.from(document.querySelectorAll('.page-btn')).find(btn => 
+        btn.textContent.includes(`${bitCount}-Bit`)
+      );
+      if (clickedButton) clickedButton.classList.add('active');
+      
+      const maxValue = Math.pow(2, bitCount) - 1;
+      document.getElementById('pageTitle').textContent = `${bitCount}-Bit Binary Codes Explorer (1-${maxValue})`;
+      
+      const allCombinations = generateCombinations(bitCount);
+      combinations = allCombinations.map((combo, id) => ({ 
+        id, 
+        bits: combo.binary, 
+        decimal: combo.decimal,
+        group: 'ungrouped' 
+      }));
+      
+      groups = ['ungrouped', 'empty_group'];
+      highlightedElements.clear();
+      selectedBits.clear();
+      
+      renderCombinations();
+      updateStatus(`Switched to ${bitCount}-bit view with ${combinations.length} codes`);
+    }
+
+    function addNewGroup() {
+      const name = prompt("Enter group name:");
+      if (!name) return;
+      
+      const cleanName = name.trim().replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_');
+      const id = `group_${cleanName}`;
+      
+      if (groups.includes(id)) {
+        updateStatus("❌ Group already exists");
+        return;
+      }
+      
+      saveState('add_group');
+      groups.push(id);
+      renderCombinations();
+      updateStatus(`✅ Created group "${name}"`);
+    }
+
+    function partitionSelected() {
+      if (!selectedBits.size) {
+        updateStatus("❌ Select some bits first");
+        return;
+      }
+
+      saveState('partition');
+      const partitions = new Map();
+      
+      combinations.forEach(combo => {
+        let key = '';
+        combo.bits.forEach((bit, idx) => {
+          if (selectedBits.has(`bit-${combo.id}-${idx}`)) {
+            key += bit;
+          }
+        });
+        
+        if (key) {
+          if (!partitions.has(key)) {
+            partitions.set(key, []);
+          }
+          partitions.get(key).push(combo);
+        }
+      });
+
+      partitions.forEach((combos, key) => {
+        const groupId = `pattern_${key}`;
+        if (!groups.includes(groupId)) {
+          groups.push(groupId);
+        }
+        combos.forEach(combo => {
+          combo.group = groupId;
+        });
+      });
+
+      renderCombinations();
+      updateStatus(`✅ Created ${partitions.size} pattern groups`);
+    }
+
+    function checkCollisions() {
+      // Get highlighted combinations or ask user to select a group
+      let targetCombos = [];
+      
+      // First, check if any combinations are highlighted
+      if (highlightedElements.size > 0) {
+        const highlightedIds = Array.from(highlightedElements).map(key => parseInt(key.split('-')[1]));
+        targetCombos = combinations.filter(combo => highlightedIds.includes(combo.id));
+        
+        if (targetCombos.length < 2) {
+          updateStatus("❌ Need at least 2 highlighted codes for collision check");
+          return;
+        }
+      } else {
+        // If no highlights, check the largest non-empty group
+        const nonEmptyGroups = groups.filter(groupId => {
+          const groupCombos = combinations.filter(c => c.group === groupId);
+          return groupCombos.length >= 2;
+        });
+        
+        if (nonEmptyGroups.length === 0) {
+          updateStatus("❌ No groups with 2+ codes found. Highlight codes or create groups first.");
+          return;
+        }
+        
+        // Find the group with the most combinations
+        let largestGroup = nonEmptyGroups[0];
+        let maxCount = 0;
+        
+        nonEmptyGroups.forEach(groupId => {
+          const count = combinations.filter(c => c.group === groupId).length;
+          if (count > maxCount) {
+            maxCount = count;
+            largestGroup = groupId;
+          }
+        });
+        
+        targetCombos = combinations.filter(c => c.group === largestGroup);
+      }
+      
+      saveState('collision_check');
+      
+      // Generate all possible pairs
+      const pairs = [];
+      for (let i = 0; i < targetCombos.length; i++) {
+        for (let j = i + 1; j < targetCombos.length; j++) {
+          pairs.push([targetCombos[i], targetCombos[j]]);
+        }
+      }
+      
+      // Check each pair for bitwise OR collisions
+      const collisions = [];
+      const orResults = new Map(); // Track OR results and which pairs produce them
+      const conflictingCodes = new Set(); // Track all codes involved in collisions
+      
+      pairs.forEach(([combo1, combo2]) => {
+        // Perform bitwise OR
+        const orBits = [];
+        for (let i = 0; i < combo1.bits.length; i++) {
+          orBits.push(combo1.bits[i] | combo2.bits[i]);
+        }
+        const orDecimal = parseInt(orBits.join(''), 2);
+        const orKey = orBits.join('');
+        
+        // Check if this OR result already exists
+        if (orResults.has(orKey)) {
+          // Collision found!
+          const existingPair = orResults.get(orKey);
+          collisions.push({
+            pair1: existingPair,
+            pair2: [combo1, combo2],
+            orResult: { bits: orBits, decimal: orDecimal }
+          });
+          
+          // Mark all involved codes as conflicting
+          conflictingCodes.add(existingPair[0]);
+          conflictingCodes.add(existingPair[1]);
+          conflictingCodes.add(combo1);
+          conflictingCodes.add(combo2);
+        } else {
+          orResults.set(orKey, [combo1, combo2]);
+        }
+      });
+      
+      // Create results summary
+      const totalPairs = pairs.length;
+      const uniqueOrResults = orResults.size;
+      const collisionCount = collisions.length;
+      
+      // If collisions found, create single collision group
+      if (collisionCount > 0) {
+        // Remove any existing collision groups
+        groups = groups.filter(g => !g.startsWith('collision_'));
+        
+        // Create single collision group
+        const collisionGroupId = 'collision_group';
+        if (!groups.includes(collisionGroupId)) {
+          groups.push(collisionGroupId);
+        }
+        
+        // Move all conflicting codes to the single collision group
+        conflictingCodes.forEach(combo => {
+          combo.group = collisionGroupId;
+        });
+      }
+      
+      // Display results
+      let resultMessage = `📊 Collision Analysis Complete!\n\n`;
+      resultMessage += `🔢 Codes analyzed: ${targetCombos.length}\n`;
+      resultMessage += `👥 Total pairs: ${totalPairs}\n`;
+      resultMessage += `🎯 Unique OR results: ${uniqueOrResults}\n`;
+      resultMessage += `💥 Collisions found: ${collisionCount}\n`;
+      
+      if (collisionCount === 0) {
+        resultMessage += `\n✅ NO COLLISIONS! All OR operations produce unique results.\n`;
+        resultMessage += `This confirms the codes are suitable for error detection/correction.`;
+      } else {
+        resultMessage += `🔄 Conflicting codes: ${conflictingCodes.size}\n\n`;
+        resultMessage += `❌ COLLISIONS DETECTED!\n`;
+        resultMessage += `All ${conflictingCodes.size} conflicting codes moved to collision group.\n\n`;
+        
+        // Show collision details
+        collisions.slice(0, 10).forEach((collision, index) => {
+          const [c1, c2] = collision.pair1;
+          const [c3, c4] = collision.pair2;
+          resultMessage += `Collision ${index + 1}:\n`;
+          resultMessage += `  ${c1.decimal} OR ${c2.decimal} = ${collision.orResult.decimal}\n`;
+          resultMessage += `  ${c3.decimal} OR ${c4.decimal} = ${collision.orResult.decimal}\n`;
+          resultMessage += `  Binary: ${collision.orResult.bits.join('')}\n\n`;
+        });
+        
+        if (collisions.length > 10) {
+          resultMessage += `... and ${collisions.length - 10} more collisions.`;
+        }
+      }
+      
+      // Clear highlights and render
+      highlightedElements.clear();
+      renderCombinations();
+      
+      alert(resultMessage);
+      updateStatus(`🔍 OR Analysis: ${collisionCount === 0 ? 'UNIQUE' : `${conflictingCodes.size} CODES IN COLLISION GROUP`} (${targetCombos.length} codes, ${totalPairs} pairs)`);
+    }
+
+    function clearHighlights() {
+      saveState('clear');
+      highlightedElements.clear();
+      selectedBits.clear();
+      renderCombinations();
+      updateStatus("✨ Cleared all selections");
+    }
+
+    function undoLastAction() {
+      if (actionHistory.length === 0) {
+        updateStatus("❌ No actions to undo");
+        return;
+      }
+
+      const lastState = actionHistory.pop();
+      combinations = lastState.combinations;
+      highlightedElements = lastState.highlighted;
+      selectedBits = lastState.selectedBits;
+      groups = lastState.groups;
+      groupCounter = lastState.groupCounter;
+      
+      renderCombinations();
+      updateStatus(`↶ Undid: ${lastState.action}`);
+    }
+
+    function resetAll() {
+      if (confirm("Reset everything?")) {
+        saveState('reset');
+        const allCombinations = generateCombinations(currentBits);
+        combinations = allCombinations.map((combo, id) => ({ 
+          id, 
+          bits: combo.binary, 
+          decimal: combo.decimal,
+          group: 'ungrouped' 
+        }));
+        groups = ['ungrouped', 'empty_group'];
+        highlightedElements.clear();
+        selectedBits.clear();
+        renderCombinations();
+        updateStatus("🗑 Reset complete");
+      }
+    }
+
+    // Initialize
+    function init() {
+      const allCombinations = generateCombinations(3);
+      combinations = allCombinations.map((combo, id) => ({ 
+        id, 
+        bits: combo.binary, 
+        decimal: combo.decimal,
+        group: 'ungrouped' 
+      }));
+      
+      renderCombinations();
+      updateStats();
+    }
+
+    // Start the app
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
+
+    // Prevent default drag behavior
+    document.addEventListener('dragover', e => e.preventDefault());
+    document.addEventListener('drop', e => e.preventDefault());
+  </script>
+
+</body>
+</html>
