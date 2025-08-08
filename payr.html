@@ -1,0 +1,379 @@
+import React, { useState } from ‘react’;
+import { Upload, FileText, CheckCircle, AlertCircle, X } from ‘lucide-react’;
+
+const PayrollCSVUpload = () => {
+const [csvData, setCsvData] = useState([]);
+const [errors, setErrors] = useState([]);
+const [isValid, setIsValid] = useState(false);
+const [fileName, setFileName] = useState(’’);
+const [dragActive, setDragActive] = useState(false);
+
+// Expected structure: 3 columns, 8 rows (plus header)
+const expectedColumns = [‘Employee Name’, ‘Hours Worked’, ‘Hourly Rate’];
+const expectedRows = 8;
+
+const validateCSVStructure = (data) => {
+const validationErrors = [];
+
+
+// Check if we have data
+if (!data || data.length === 0) {
+  validationErrors.push('CSV file is empty or invalid');
+  return validationErrors;
+}
+
+// Check column count
+const firstRow = data[0];
+if (!firstRow || Object.keys(firstRow).length !== 3) {
+  validationErrors.push(`Expected 3 columns, found ${firstRow ? Object.keys(firstRow).length : 0}`);
+}
+
+// Check row count (excluding header)
+if (data.length !== expectedRows) {
+  validationErrors.push(`Expected ${expectedRows} data rows, found ${data.length}`);
+}
+
+// Check for required columns
+if (firstRow) {
+  const actualColumns = Object.keys(firstRow);
+  expectedColumns.forEach(col => {
+    if (!actualColumns.includes(col)) {
+      validationErrors.push(`Missing required column: "${col}"`);
+    }
+  });
+}
+
+// Validate data types and required fields
+data.forEach((row, index) => {
+  const rowNum = index + 1;
+  
+  if (!row['Employee Name'] || row['Employee Name'].toString().trim() === '') {
+    validationErrors.push(`Row ${rowNum}: Employee Name is required`);
+  }
+  
+  const hoursWorked = parseFloat(row['Hours Worked']);
+  if (isNaN(hoursWorked) || hoursWorked < 0) {
+    validationErrors.push(`Row ${rowNum}: Hours Worked must be a valid positive number`);
+  }
+  
+  const hourlyRate = parseFloat(row['Hourly Rate']);
+  if (isNaN(hourlyRate) || hourlyRate <= 0) {
+    validationErrors.push(`Row ${rowNum}: Hourly Rate must be a valid positive number`);
+  }
+});
+
+return validationErrors;
+
+
+};
+
+const parseCSV = (csvText) => {
+const lines = csvText.trim().split(’\n’);
+if (lines.length < 2) return [];
+
+
+const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+const data = [];
+
+for (let i = 1; i < lines.length; i++) {
+  const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+  const row = {};
+  headers.forEach((header, index) => {
+    row[header] = values[index] || '';
+  });
+  data.push(row);
+}
+
+return data;
+
+
+};
+
+const handleFileUpload = (file) => {
+if (!file) return;
+
+
+if (file.type !== 'text/csv' && !file.name.endsWith('.csv')) {
+  setErrors(['Please upload a CSV file']);
+  return;
+}
+
+setFileName(file.name);
+const reader = new FileReader();
+
+reader.onload = (e) => {
+  const csvText = e.target.result;
+  const parsedData = parseCSV(csvText);
+  const validationErrors = validateCSVStructure(parsedData);
+  
+  if (validationErrors.length === 0) {
+    setCsvData(parsedData);
+    setErrors([]);
+    setIsValid(true);
+  } else {
+    setCsvData([]);
+    setErrors(validationErrors);
+    setIsValid(false);
+  }
+};
+
+reader.readAsText(file);
+
+
+};
+
+const handleDrag = (e) => {
+e.preventDefault();
+e.stopPropagation();
+if (e.type === “dragenter” || e.type === “dragover”) {
+setDragActive(true);
+} else if (e.type === “dragleave”) {
+setDragActive(false);
+}
+};
+
+const handleDrop = (e) => {
+e.preventDefault();
+e.stopPropagation();
+setDragActive(false);
+
+
+if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+  handleFileUpload(e.dataTransfer.files[0]);
+}
+
+
+};
+
+const handleFileInputChange = (e) => {
+if (e.target.files && e.target.files[0]) {
+handleFileUpload(e.target.files[0]);
+}
+};
+
+const resetUpload = () => {
+setCsvData([]);
+setErrors([]);
+setIsValid(false);
+setFileName(’’);
+};
+
+const downloadSampleCSV = () => {
+const sampleData = [
+[‘Employee Name’, ‘Hours Worked’, ‘Hourly Rate’],
+[‘John Smith’, ‘40’, ‘25.50’],
+[‘Jane Doe’, ‘38’, ‘28.00’],
+[‘Mike Johnson’, ‘42’, ‘22.75’],
+[‘Sarah Williams’, ‘40’, ‘30.25’],
+[‘David Brown’, ‘35’, ‘26.50’],
+[‘Lisa Davis’, ‘40’, ‘24.00’],
+[‘Tom Wilson’, ‘45’, ‘32.50’],
+[‘Emily Taylor’, ‘38’, ‘27.75’]
+];
+
+
+const csvContent = sampleData.map(row => row.join(',')).join('\n');
+
+try {
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  
+  // For modern browsers
+  if (window.navigator && window.navigator.msSaveOrOpenBlob) {
+    // IE support
+    window.navigator.msSaveOrOpenBlob(blob, 'payroll_sample.csv');
+  } else {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'payroll_sample.csv';
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+} catch (error) {
+  // Fallback: copy to clipboard and show modal
+  navigator.clipboard.writeText(csvContent).then(() => {
+    alert('Sample CSV data copied to clipboard! Paste it into a text editor and save as .csv file');
+  }).catch(() => {
+    // Ultimate fallback: show the CSV content
+    const newWindow = window.open('', '_blank');
+    newWindow.document.write('<pre>' + csvContent + '</pre>');
+    newWindow.document.write('<p>Copy this content and save as a .csv file</p>');
+  });
+}
+
+
+};
+
+const calculatePayroll = (data) => {
+return data.map(row => ({
+…row,
+‘Gross Pay’: (parseFloat(row[‘Hours Worked’]) * parseFloat(row[‘Hourly Rate’])).toFixed(2)
+}));
+};
+
+return (
+<div className="max-w-4xl mx-auto p-6 bg-white">
+<div className="mb-8">
+<h1 className="text-3xl font-bold text-gray-900 mb-2">Payroll CSV Upload</h1>
+<p className="text-gray-600">Upload a CSV file with employee payroll data (3 columns, 8 rows)</p>
+</div>
+
+
+  {/* Sample CSV Download */}
+  <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+    <div className="flex items-center justify-between">
+      <div>
+        <h3 className="font-semibold text-blue-900">Need a sample CSV?</h3>
+        <p className="text-sm text-blue-700">Download a properly formatted sample file with the correct structure</p>
+      </div>
+      <button
+        onClick={downloadSampleCSV}
+        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+      >
+        Download Sample
+      </button>
+    </div>
+  </div>
+
+  {/* File Upload Area */}
+  <div
+    className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+      dragActive 
+        ? 'border-blue-400 bg-blue-50' 
+        : 'border-gray-300 hover:border-gray-400'
+    }`}
+    onDragEnter={handleDrag}
+    onDragLeave={handleDrag}
+    onDragOver={handleDrag}
+    onDrop={handleDrop}
+  >
+    <input
+      type="file"
+      accept=".csv"
+      onChange={handleFileInputChange}
+      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+    />
+    
+    <div className="space-y-4">
+      <Upload className="mx-auto h-12 w-12 text-gray-400" />
+      <div>
+        <p className="text-lg font-medium text-gray-900">
+          Drop your CSV file here, or click to browse
+        </p>
+        <p className="text-sm text-gray-500 mt-1">
+          Supports CSV files with exactly 3 columns and 8 data rows
+        </p>
+      </div>
+    </div>
+  </div>
+
+  {/* File Status */}
+  {fileName && (
+    <div className="mt-4 p-3 bg-gray-50 rounded-lg border flex items-center justify-between">
+      <div className="flex items-center">
+        <FileText className="h-5 w-5 text-gray-400 mr-2" />
+        <span className="text-sm font-medium">{fileName}</span>
+      </div>
+      <button
+        onClick={resetUpload}
+        className="text-gray-400 hover:text-gray-600"
+      >
+        <X className="h-4 w-4" />
+      </button>
+    </div>
+  )}
+
+  {/* Validation Results */}
+  {errors.length > 0 && (
+    <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+      <div className="flex items-center mb-2">
+        <AlertCircle className="h-5 w-5 text-red-600 mr-2" />
+        <h3 className="font-semibold text-red-900">Validation Errors</h3>
+      </div>
+      <ul className="list-disc list-inside text-sm text-red-700 space-y-1">
+        {errors.map((error, index) => (
+          <li key={index}>{error}</li>
+        ))}
+      </ul>
+    </div>
+  )}
+
+  {isValid && csvData.length > 0 && (
+    <div className="mt-6">
+      <div className="flex items-center mb-4">
+        <CheckCircle className="h-5 w-5 text-green-600 mr-2" />
+        <h3 className="font-semibold text-green-900">CSV Validated Successfully!</h3>
+      </div>
+      
+      {/* Data Preview */}
+      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
+          <h4 className="font-medium text-gray-900">Payroll Data Preview</h4>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                {expectedColumns.map((col) => (
+                  <th key={col} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    {col}
+                  </th>
+                ))}
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Gross Pay
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {calculatePayroll(csvData).map((row, index) => (
+                <tr key={index} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {row['Employee Name']}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {row['Hours Worked']}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    ${row['Hourly Rate']}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">
+                    ${row['Gross Pay']}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Process Button */}
+      <div className="mt-6 flex justify-end">
+        <button className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium">
+          Process Payroll Data
+        </button>
+      </div>
+    </div>
+  )}
+
+  {/* Requirements Info */}
+  <div className="mt-8 p-4 bg-gray-50 rounded-lg border border-gray-200">
+    <h4 className="font-semibold text-gray-900 mb-2">CSV Format Requirements:</h4>
+    <ul className="text-sm text-gray-600 space-y-1">
+      <li>• Exactly 3 columns: Employee Name, Hours Worked, Hourly Rate</li>
+      <li>• Exactly 8 data rows (plus header row)</li>
+      <li>• Employee Name must not be empty</li>
+      <li>• Hours Worked must be a positive number</li>
+      <li>• Hourly Rate must be a positive number</li>
+      <li>• Use comma-separated values (.csv format)</li>
+    </ul>
+  </div>
+</div>
+
+
+);
+};
+
+export default PayrollCSVUpload;p
