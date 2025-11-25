@@ -1,0 +1,522 @@
+import React, { useState, useEffect } from ‘react’;
+import { Timer, RefreshCw, Play, Pause, Users, Eye, EyeOff } from ‘lucide-react’;
+
+const CATEGORIES = [
+“A Boy’s Name”, “A Girl’s Name”, “Things That Are Cold”, “Things That Are Hot”,
+“US Cities”, “Things You Throw Away”, “Relatives”, “School Supplies”,
+“Things in the Sky”, “Pizza Toppings”, “Cartoon Characters”, “Types of Drinks”,
+“Musical Instruments”, “Animals”, “Countries”, “Sports”, “Fruits”, “Vegetables”,
+“TV Shows”, “Movies”, “Clothing Items”, “Colors”, “Things in a Kitchen”,
+“Things in a Bathroom”, “Car Brands”, “Book Titles”, “Famous People”,
+“Restaurants”, “Hobbies”, “Ice Cream Flavors”, “Video Games”, “Things at a Beach”,
+“Things in a Park”, “Breakfast Foods”, “Desserts”, “Holidays”, “Jobs/Occupations”,
+“Things You Plug In”, “Items in a Purse/Wallet”, “Things at a Party”,
+“Types of Music”, “Dance Moves”, “Board Games”, “Apps/Websites”, “Brands”,
+“Things That Are Round”, “Things That Smell Bad”, “Things in a Gym”,
+“Scary Things”, “Things in Space”, “Fast Food Chains”, “Superheroes/Villains”,
+“Things You Wear on Your Feet”, “Things Made of Metal”, “Things That Fly”,
+“Things in a Garden”, “Baby Items”, “Wedding Things”, “School Subjects”,
+“Things at a Gas Station”, “Types of Vehicles”, “Things That Are Sticky”,
+“Things You Find at a Mall”, “Sandwiches”, “Things on a Menu”, “Party Games”
+];
+
+const LETTERS = ‘ABCDEFGHIJKLMNOPRSTW’.split(’’);
+
+export default function ScattergoriesApp() {
+const [gameState, setGameState] = useState(‘setup’); // setup, playing, results
+const [sessionId, setSessionId] = useState(’’);
+const [playerName, setPlayerName] = useState(’’);
+const [isHost, setIsHost] = useState(false);
+const [letter, setLetter] = useState(’’);
+const [categories, setCategories] = useState([]);
+const [timeLeft, setTimeLeft] = useState(180);
+const [isRunning, setIsRunning] = useState(false);
+const [numCategories, setNumCategories] = useState(12);
+const [players, setPlayers] = useState({});
+const [myAnswers, setMyAnswers] = useState({});
+const [hasSubmitted, setHasSubmitted] = useState(false);
+const [showAnswers, setShowAnswers] = useState({});
+
+useEffect(() => {
+const loadSession = async () => {
+const urlParams = new URLSearchParams(window.location.search);
+const sid = urlParams.get(‘session’) || generateSessionId();
+setSessionId(sid);
+
+```
+  try {
+    const session = await window.storage.get(`session:${sid}`, true);
+    if (session) {
+      const data = JSON.parse(session.value);
+      setLetter(data.letter);
+      setCategories(data.categories);
+      setGameState(data.gameState);
+      setTimeLeft(data.timeLeft);
+      setIsRunning(data.isRunning);
+    }
+  } catch (e) {
+    // Session doesn't exist yet
+  }
+};
+loadSession();
+```
+
+}, []);
+
+useEffect(() => {
+let interval;
+if (isRunning && timeLeft > 0 && isHost) {
+interval = setInterval(async () => {
+const newTime = timeLeft - 1;
+setTimeLeft(newTime);
+
+```
+    if (newTime === 0) {
+      setIsRunning(false);
+      setGameState('results');
+      await saveSession({ timeLeft: 0, isRunning: false, gameState: 'results' });
+    } else {
+      await saveSession({ timeLeft: newTime });
+    }
+  }, 1000);
+}
+return () => clearInterval(interval);
+```
+
+}, [isRunning, timeLeft, isHost]);
+
+useEffect(() => {
+if (sessionId && playerName) {
+const pollInterval = setInterval(async () => {
+try {
+const session = await window.storage.get(`session:${sessionId}`, true);
+if (session) {
+const data = JSON.parse(session.value);
+if (!isHost) {
+setLetter(data.letter);
+setCategories(data.categories);
+setGameState(data.gameState);
+setTimeLeft(data.timeLeft);
+setIsRunning(data.isRunning);
+}
+}
+
+```
+      const playerKeys = await window.storage.list(`player:${sessionId}:`, true);
+      const playersData = {};
+      for (const key of playerKeys.keys) {
+        try {
+          const result = await window.storage.get(key, true);
+          if (result) {
+            const data = JSON.parse(result.value);
+            playersData[data.name] = data;
+          }
+        } catch (e) {}
+      }
+      setPlayers(playersData);
+    } catch (e) {}
+  }, 2000);
+  
+  return () => clearInterval(pollInterval);
+}
+```
+
+}, [sessionId, playerName, isHost]);
+
+const generateSessionId = () => {
+return Math.random().toString(36).substring(2, 8).toUpperCase();
+};
+
+const saveSession = async (updates = {}) => {
+const sessionData = {
+letter,
+categories,
+gameState,
+timeLeft,
+isRunning,
+…updates
+};
+await window.storage.set(`session:${sessionId}`, JSON.stringify(sessionData), true);
+};
+
+const joinSession = async (name, host = false) => {
+setPlayerName(name);
+setIsHost(host);
+
+```
+if (host) {
+  await saveSession();
+}
+
+await window.storage.set(
+  `player:${sessionId}:${name}`,
+  JSON.stringify({ name, answers: {}, submitted: false }),
+  true
+);
+
+const newUrl = `${window.location.pathname}?session=${sessionId}`;
+window.history.replaceState({}, '', newUrl);
+
+setGameState('setup');
+```
+
+};
+
+const startGame = async () => {
+const randomLetter = LETTERS[Math.floor(Math.random() * LETTERS.length)];
+const shuffled = […CATEGORIES].sort(() => Math.random() - 0.5);
+const selectedCategories = shuffled.slice(0, numCategories);
+
+```
+setLetter(randomLetter);
+setCategories(selectedCategories);
+setGameState('playing');
+setTimeLeft(180);
+setIsRunning(false);
+setMyAnswers({});
+setHasSubmitted(false);
+
+await saveSession({
+  letter: randomLetter,
+  categories: selectedCategories,
+  gameState: 'playing',
+  timeLeft: 180,
+  isRunning: false
+});
+
+// Clear all player answers
+const playerKeys = await window.storage.list(`player:${sessionId}:`, true);
+for (const key of playerKeys.keys) {
+  try {
+    const result = await window.storage.get(key, true);
+    if (result) {
+      const data = JSON.parse(result.value);
+      await window.storage.set(key, JSON.stringify({ ...data, answers: {}, submitted: false }), true);
+    }
+  } catch (e) {}
+}
+```
+
+};
+
+const toggleTimer = async () => {
+const newRunning = !isRunning;
+setIsRunning(newRunning);
+await saveSession({ isRunning: newRunning });
+};
+
+const handleAnswerChange = (index, value) => {
+setMyAnswers(prev => ({ …prev, [index]: value }));
+};
+
+const submitAnswers = async () => {
+await window.storage.set(
+`player:${sessionId}:${playerName}`,
+JSON.stringify({ name: playerName, answers: myAnswers, submitted: true }),
+true
+);
+setHasSubmitted(true);
+};
+
+const resetGame = async () => {
+setGameState(‘setup’);
+setLetter(’’);
+setCategories([]);
+setTimeLeft(180);
+setIsRunning(false);
+setMyAnswers({});
+setHasSubmitted(false);
+setShowAnswers({});
+await saveSession({ gameState: ‘setup’, letter: ‘’, categories: [], timeLeft: 180, isRunning: false });
+};
+
+const formatTime = (seconds) => {
+const mins = Math.floor(seconds / 60);
+const secs = seconds % 60;
+return `${mins}:${secs.toString().padStart(2, '0')}`;
+};
+
+const toggleShowPlayer = (name) => {
+setShowAnswers(prev => ({ …prev, [name]: !prev[name] }));
+};
+
+const calculateScores = () => {
+const scores = {};
+const answerCounts = {};
+
+```
+categories.forEach((_, idx) => {
+  answerCounts[idx] = {};
+  Object.values(players).forEach(player => {
+    const answer = player.answers?.[idx]?.toLowerCase().trim();
+    if (answer) {
+      answerCounts[idx][answer] = (answerCounts[idx][answer] || 0) + 1;
+    }
+  });
+});
+
+Object.entries(players).forEach(([name, player]) => {
+  let score = 0;
+  categories.forEach((_, idx) => {
+    const answer = player.answers?.[idx]?.toLowerCase().trim();
+    if (answer && answerCounts[idx][answer] === 1) {
+      score += 1;
+    }
+  });
+  scores[name] = score;
+});
+
+return scores;
+```
+
+};
+
+if (!playerName) {
+return (
+<div className="min-h-screen bg-gradient-to-br from-purple-500 to-pink-500 p-4 flex items-center justify-center">
+<div className="bg-white rounded-lg shadow-2xl p-8 max-w-md w-full">
+<h1 className="text-3xl font-bold text-center mb-6 text-purple-600">
+Join Scattergories
+</h1>
+
+```
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-semibold mb-2">Your Name:</label>
+          <input
+            type="text"
+            placeholder="Enter your name"
+            className="w-full px-4 py-2 border-2 border-purple-300 rounded-lg"
+            onKeyPress={(e) => {
+              if (e.key === 'Enter' && e.target.value.trim()) {
+                joinSession(e.target.value.trim(), true);
+              }
+            }}
+          />
+        </div>
+        
+        <button
+          onClick={(e) => {
+            const input = e.target.previousElementSibling.querySelector('input');
+            if (input.value.trim()) {
+              joinSession(input.value.trim(), true);
+            }
+          }}
+          className="w-full bg-purple-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-purple-700"
+        >
+          Create/Join Session
+        </button>
+        
+        <div className="text-center text-sm text-gray-600">
+          Session Code: <span className="font-bold text-purple-600">{sessionId}</span>
+        </div>
+        <p className="text-xs text-gray-500 text-center">
+          Share this URL with friends to join the same game!
+        </p>
+      </div>
+    </div>
+  </div>
+);
+```
+
+}
+
+const scores = gameState === ‘results’ ? calculateScores() : {};
+const sortedPlayers = Object.entries(scores).sort((a, b) => b[1] - a[1]);
+
+return (
+<div className="min-h-screen bg-gradient-to-br from-purple-500 to-pink-500 p-4">
+<div className="max-w-6xl mx-auto">
+<div className="bg-white rounded-lg shadow-2xl p-6 mb-4">
+<div className="flex justify-between items-center mb-4">
+<div>
+<h1 className="text-3xl font-bold text-purple-600">Scattergories</h1>
+<p className="text-sm text-gray-600">Session: {sessionId} • {playerName} {isHost && ‘(Host)’}</p>
+</div>
+<div className="flex items-center gap-2 text-lg">
+<Users size={24} />
+<span className="font-semibold">{Object.keys(players).length} Players</span>
+</div>
+</div>
+
+```
+      {gameState === 'setup' && isHost && (
+        <div className="text-center space-y-4">
+          <div>
+            <label className="block text-lg font-semibold mb-2">Number of Categories:</label>
+            <select
+              value={numCategories}
+              onChange={(e) => setNumCategories(Number(e.target.value))}
+              className="px-4 py-2 border-2 border-purple-300 rounded-lg"
+            >
+              {[8, 10, 12, 15].map(num => (
+                <option key={num} value={num}>{num}</option>
+              ))}
+            </select>
+          </div>
+          <button
+            onClick={startGame}
+            className="bg-purple-600 text-white px-8 py-4 rounded-lg text-xl font-bold hover:bg-purple-700"
+          >
+            <Play className="inline mr-2" size={24} />
+            Start Game
+          </button>
+        </div>
+      )}
+
+      {gameState === 'setup' && !isHost && (
+        <div className="text-center py-8">
+          <p className="text-xl text-gray-600">Waiting for host to start the game...</p>
+        </div>
+      )}
+
+      {gameState === 'playing' && (
+        <>
+          <div className="bg-gradient-to-r from-purple-100 to-pink-100 rounded-lg p-4 mb-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-lg font-semibold">Letter:</p>
+                <div className="text-6xl font-bold text-purple-600">{letter}</div>
+              </div>
+              <div className="text-right">
+                <div className="flex items-center gap-2 text-2xl font-bold mb-2">
+                  <Timer size={28} />
+                  <span className={timeLeft <= 30 ? 'text-red-600' : 'text-gray-800'}>
+                    {formatTime(timeLeft)}
+                  </span>
+                </div>
+                {isHost && (
+                  <button
+                    onClick={toggleTimer}
+                    className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700"
+                  >
+                    {isRunning ? <Pause className="inline" size={16} /> : <Play className="inline" size={16} />}
+                    {isRunning ? ' Pause' : ' Start'}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gray-50 rounded-lg p-4 mb-4">
+            <h2 className="text-xl font-bold mb-3">Your Answers:</h2>
+            <div className="space-y-2">
+              {categories.map((category, idx) => (
+                <div key={idx} className="flex items-center gap-2">
+                  <span className="font-semibold text-purple-600 w-8">{idx + 1}.</span>
+                  <span className="w-48 text-sm">{category}</span>
+                  <input
+                    type="text"
+                    value={myAnswers[idx] || ''}
+                    onChange={(e) => handleAnswerChange(idx, e.target.value)}
+                    disabled={hasSubmitted}
+                    className="flex-1 px-3 py-1 border-2 border-purple-200 rounded disabled:bg-gray-100"
+                    placeholder={`Answer starting with ${letter}...`}
+                  />
+                </div>
+              ))}
+            </div>
+            
+            {!hasSubmitted ? (
+              <button
+                onClick={submitAnswers}
+                className="w-full mt-4 bg-green-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-700"
+              >
+                Submit Answers
+              </button>
+            ) : (
+              <div className="mt-4 text-center text-green-600 font-semibold">
+                ✓ Answers Submitted! Wait for time to end...
+              </div>
+            )}
+          </div>
+
+          <div className="bg-blue-50 rounded-lg p-4">
+            <h3 className="font-bold mb-2">Players Status:</h3>
+            <div className="flex flex-wrap gap-2">
+              {Object.values(players).map(player => (
+                <span
+                  key={player.name}
+                  className={`px-3 py-1 rounded-full text-sm ${
+                    player.submitted ? 'bg-green-200 text-green-800' : 'bg-gray-200 text-gray-600'
+                  }`}
+                >
+                  {player.name} {player.submitted && '✓'}
+                </span>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
+      {gameState === 'results' && (
+        <>
+          <div className="bg-gradient-to-r from-yellow-100 to-orange-100 rounded-lg p-6 mb-4">
+            <h2 className="text-3xl font-bold text-center mb-4">🏆 Final Scores 🏆</h2>
+            <div className="space-y-2">
+              {sortedPlayers.map(([name, score], idx) => (
+                <div key={name} className="flex items-center justify-between bg-white rounded-lg p-3">
+                  <span className="font-semibold text-lg">
+                    {idx === 0 && '🥇'} {idx === 1 && '🥈'} {idx === 2 && '🥉'} {name}
+                  </span>
+                  <span className="text-2xl font-bold text-purple-600">{score}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-3 mb-4">
+            {Object.values(players).map(player => (
+              <div key={player.name} className="bg-gray-50 rounded-lg p-4">
+                <button
+                  onClick={() => toggleShowPlayer(player.name)}
+                  className="flex items-center justify-between w-full text-left"
+                >
+                  <span className="font-bold text-lg">{player.name}'s Answers ({scores[player.name]} pts)</span>
+                  {showAnswers[player.name] ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+                {showAnswers[player.name] && (
+                  <div className="mt-3 space-y-1">
+                    {categories.map((category, idx) => {
+                      const answer = player.answers?.[idx]?.toLowerCase().trim();
+                      const answerCounts = {};
+                      Object.values(players).forEach(p => {
+                        const a = p.answers?.[idx]?.toLowerCase().trim();
+                        if (a) answerCounts[a] = (answerCounts[a] || 0) + 1;
+                      });
+                      const isUnique = answer && answerCounts[answer] === 1;
+                      
+                      return (
+                        <div key={idx} className="flex items-center gap-2 text-sm">
+                          <span className="text-purple-600 font-semibold w-6">{idx + 1}.</span>
+                          <span className="w-40">{category}:</span>
+                          <span className={`font-semibold ${isUnique ? 'text-green-600' : 'text-gray-600'}`}>
+                            {player.answers?.[idx] || '(no answer)'} {isUnique && '✓'}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {isHost && (
+            <button
+              onClick={resetGame}
+              className="w-full bg-purple-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-purple-700"
+            >
+              <RefreshCw className="inline mr-2" size={20} />
+              New Game
+            </button>
+          )}
+        </>
+      )}
+    </div>
+  </div>
+</div>
+```
+
+);
+}
